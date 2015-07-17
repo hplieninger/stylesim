@@ -1,0 +1,22 @@
+\name{partial_cor}
+\alias{partial_cor}
+\title{Compute the Partial Correlation}
+\usage{
+partial_cor(x)
+}
+\arguments{
+  \item{x}{A matrix comprising 3 columns containing the
+  variables X, Y, and Z}
+}
+\value{
+A single value, i.e., the partial correlation
+}
+\description{
+Computes the partial correlation of two variables X and Y
+controlling for a third variable Z.
+}
+\seealso{
+Alternatives are, for example
+\code{\link[psych]{partial.r}}.
+}
+
