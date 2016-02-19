@@ -1,0 +1,17 @@
+citHeader("To cite "simstyle" use:")
+
+citEntry(entry = "Article",
+  title        = "Mountain or molehill: {A} simulation study on the impact of response styles",
+  author       = personList(as.person("Hansj\\\"{o}rg Plieninger")),
+  journal      = "Educational and Psychological Measurement",
+  year         = "in press",
+  # volume       = "40",
+  # number       = "3",
+  # pages        = "1--25",
+  # url          = "http://www.jstatsoft.org/v40/i03/",
+
+  textVersion  =
+  paste("Plieninger, H. (in press).",
+        "Mountain or molehill: A simulation study on the impact of response styles.",
+        "Educational and Psychological Measurement.")
+)

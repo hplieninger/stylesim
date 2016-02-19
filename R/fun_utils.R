@@ -8,7 +8,7 @@
 #'
 #' @param x A matrix comprising 3 columns containing the variables X, Y, and Z
 #' @return A single value, i.e., the partial correlation
-#' @seealso Alternatives are, for example \code{\link[psych]{partial.r}}.
+#' @seealso Alternatives are, for example, \code{\link[psych]{partial.r}}.
 partial_cor <- function(x) {
   # x is a matrix of 3 columns containing the variables X, Y, and Z
   x <- cor(x)
@@ -16,193 +16,82 @@ partial_cor <- function(x) {
 }
 
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-# COMPUTE EFFECT SIZE F^2 ---------------------------------------------------
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-#' Compute the effect size \eqn{f^2} for nested (hierarchical) regression models
-#'
-#' detailed description
-#'
-#' @param model a model of class \code{lm}
-#' @return A vector containing the $f^2$ values for every coefficient in the model
-#' @seealso \code{\link[lmSupport]{modelEffectSizes}}.
-#' @export
-f_squared <- function(model, digits = 3) {
-    r2 <- matrix(NA, nrow = model$rank - 1, ncol = 2,
-                 dimnames = list(names(model$coefficients)[-1], c("R2_1", "R2_2")))
-    x1 <- attr(model$terms, "factors")
-    x2 <- attr(model$terms, "order")
-    x3 <- attr(model$terms, "term.labels")
-    if (any(grepl("^", x3, fixed = T))) {
-        x4 <- sort(x3[grepl("^", x3, fixed = T)])
-        x5 <- substring(x4, first = unlist(gregexpr("(", x4, fixed = T)) + 1,
-                        last = unlist(gregexpr("^", x4, fixed = T)) - 1)
-        x6 <- as.integer(substring(x4, first = unlist(gregexpr("^", x4, fixed = T)) + 1,
-                                   last = unlist(gregexpr("^", x4, fixed = T)) + 1))
-        # the code for x5 and x6 fails for higher*higher-interactions (e.g.,
-        # 'I(a^2)*I(b^2)'). Therefore, I experimented with x5a and x6a below, but
-        # that's not enough, situation gets realy complicated.
-#         x5a <-  vector("list", length(x4)) 
-#         for (ii in seq_along(x4)) {
-#             x5a[[ii]] <- substring(x4[ii], first = unlist(gregexpr("(", x4, fixed = T)[ii]) + 1,
-#                       last = unlist(gregexpr("^", x4, fixed = T)[ii]) - 1)
-#         }
-#         x6a <-  vector("list", length(x4)) 
-#         for (ii in seq_along(x4)) {
-#             x6a[[ii]] <- as.integer(substring(x4[ii], first = unlist(gregexpr("^", x4, fixed = T)[ii]) + 1,
-#                                               last = unlist(gregexpr("^", x4, fixed = T)[ii]) + 1))
-#         }
-
-        a1 <- matrix(NA, nrow = (max(x6)-1), ncol = length(x6),
-                     dimnames = list(NULL, x4))
-        a1[1, ] <- x5
-        
-        if (nrow(a1) > 1) {
-            for (kk in 2:(max(x6)-1)) {
-                for (ii in 1:length(x6)) {
-                    if (x6[ii] > kk) a1[kk, ii] <- x4[ii -( kk - 2 + 1)]
-                }
-            }
-        }
-
-        for (ii in 1:ncol(a1)) {
-            x1[na.omit(a1[, ii]), colnames(a1)[ii]] <- 1
-        }
-
-    }
-    drop.x <- vector("list", length = length(x3))
-    for (ii in 1:length(drop.x)) {
-        rows.x <- x1[, x3[ii]] == 1
-        cols.x <- (apply(x1[rows.x, , drop = F], 2, function(x) all(x > 0))) &
-                      (x2 >= x2[ii])
-        drop.x[[ii]] <- colnames(x1[rows.x, cols.x, drop = F])
-    }
-    # drop.x <- c(1, drop.x)
-    for (ii in 1:length(drop.x)) {
-
-        r2[ii, 1] <- summary(do.call("update",
-                                     args=list(model,
-                                               paste("~ .", paste("-", drop.x[[ii]], collapse = " "))))
-        )$r.squared
-        if (length(drop.x[ii]) > 1) {
-            r2[ii, 2] <- summary(do.call("update",
-                                         args=list(model,
-                                                   paste("~ .", paste("-", drop.x[-1], collapse = " "))))
-            )$r.squared
-        } else {
-            r2[ii, 2] <- summary(model)$r.squared
-        }
-    }
-    f2 <- (r2[, 2, drop = F] - r2[, 1, drop = F]) / (1 - r2[, 2, drop = F])
-    colnames(f2) <- "f2"
-    print(round(f2[f2[, 1] > 10^(-digits), , drop = F], digits = digits))
-    invisible(f2)
-}
-
-
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-# PLOT ITEM CURVES ----------------------------------------------------------
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-#' Plot Category Response Curves for a polytomous item
-#'
-#' detailed description
-#'
-#' @param loc The overall item difficulty of the item
-#' @return thres The thresholds of the different categories
-# @seealso
-#' @export
-plot_CRC <- function(loc, thres, alp = 1, ...) {
-
-  K <- length(thres)
-  categ <- K + 1
-
-  x <- seq(-3 + 0, 3 + 0, length=100)
-  p <- matrix(nrow=100, ncol=categ)
-
-  B <- B <- matrix(0:K, ncol=1)
-  A <- diag(1, K)
-  A[lower.tri(A)] <- 1
-  A <- rbind(0, A)
-  A <- cbind(0:K, A)
-  delta <- c(loc, thres)
-  for(i in 1:100) {
-    for(j in 1:categ) {
-      p[i, j] <- (exp(alp*(B[j] * x[i] - A[j, ] %*% delta)))/
-        (sum(exp(alp*(B %*% x[i] - A %*% delta))))
-    }
-  }
-
-  ellipsis <- list(...)
-  ellipsis <- ellipsis[!names(ellipsis) %in% "add"]
-
-  if (all(any(names(list(...)) %in% "add"), list(...)$add == TRUE)) {
-    do.call(lines, args =
-              c(list(x = x, y = p[, 1], type = "l"), ellipsis))
-  } else {
-    do.call(plot, args =
-              c(list(x = x, y = p[, 1], type = "l", xlim = c(min(x), max(x)),
-                     ylim = c(0, 1), ylab = "Probability", xlab = "Theta",
-                     main = "Category Response Curves"), ellipsis))
-  }
-
-  do.call(points, args =
-            c(list(x = (loc + thres), y = rep(0, K),
-                   pch = as.character(1:categ)), ellipsis))
-  do.call(points, args =
-            c(list(x = loc, y = 0, pch = 17), ellipsis))
-  for (i in 2:categ) {
-    do.call(lines, args =
-              c(list(x = x, y = p[, i]), ellipsis))
-  }
-}
-
-
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-# SCATTERPLOT INCL. CORRELATION AS LEGEND -----------------------------------
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-#' Plot a default scatterplot and add the correlation coefficient as a legend
-#'
-#' detailed description
-#'
-#' @param ... See \code{\link{plot.default}}.
-#' @seealso \code{\link{legend}}, \code{\link{cor}}
-#' @export
-plot_cor <- function(...) {
-#     dots <- function(...) {
-#         eval(substitute(alist(...)))
-#     }
-    plot.default(...)
-    c.1 <- round(do.call(cor, list(x = eval(substitute(alist(...)))[[1]],
-                                   y = eval(substitute(alist(...)))[[2]])), 2)
-    legend(x = ifelse(c.1 > 0, "topleft", "topright"),
-           legend = paste("r =", c.1),
-           box.col = "white", inset = .01)
-}
-
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 # INTERACTION PLOT ----------------------------------------------------------
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-#' Plot a default scatterplot and add simple slope regression lines to visualize interactions
-#'
-#' detailed description
-#'
-#' @param data A data frame.
-#' @param model An object of class 'lm'.
-#' @param y The dependent variable.
-#' @param x The independent variables.
-#' @param lvl The levels of x[2] for the simple slopes.
-#' @param ... See \code{\link{plot.default}}.
-#' @seealso \code{\link{legend}}, \code{\link{cor}}
-#' @export
+#' Plot a default scatterplot and add simple slope regression lines in order to
+#' visualize interaction effects
+#' 
+#' This function may help to understand and interpret interaction effects
+#' observed in a linear model (\code{\link[stats]{lm}}) by means of simple
+#' slopes.
+#' 
+#' @param data A data frame, the same one that was used to fit the model.
+#' @param model An object of class (\code{\link[stats]{lm}}). Make sure to use 
+#'   the \code{data} argument of \code{\link[stats]{lm}} (i.e., do not use 
+#'   something like \code{lm(d$y ~ d$x1*d$x2)}).
+#' @param y Character. The dependent variable in the \code{model}.
+#' @param x Character vector. The independent variable(s) in the \code{model}
+#'   for which the interaction effects should be plotted. If this is of length >
+#'   1, the first element will be used as the x-variable of the plot and the
+#'   second element will be used for different simple slopes (and the third
+#'   variable will be used for different plot panels).
+#' @param xq Character. Optional term in your model, namely, the quadratic 
+#'   effect of your first independent variable.
+#' @param lvl List of numeric vectors. The list must be of length 1 with two 
+#'   predictors and of length 2 with three predictors. Each vector contains the 
+#'   values of the corresponding predictor at which the plot is to be drawn.
+#'   Defaults to three values, namely \eqn{M - 1SD}, \eqn{M}, and \eqn{M + 1SD}.
+#' @param N Numeric. A number of data points to plot; possibly smaller than 
+#'   \code{nrow(data)}.
+#' @param lwd Numeric. The line width(s) for the line(s) (see
+#'   \code{\link[graphics]{par}}).
+#' @param lty Numeric. The line type(s) for the line(s) (see
+#'   \code{\link[graphics]{par}}).
+#' @param col Character. The color of the points.
+#' @param alpha Numeric. An alpha transparency value (as an opacity, so 0 means 
+#'   fully transparent and 1 means opaque; see \code{\link[grDevices]{rgb}}).
+#' @param col.s Character vector. The color(s) of the slope(s). Must be of 
+#'   length 1 for one predictor and equal to \code{length(lvl[[1]])} for 2 
+#'   predictors.
+#' @param cex.legend Numeric. A value giving the amount by which the legend 
+#'   should be magnified (see \code{\link[graphics]{par}}).
+#' @param plot.legend Logical. Should a legend be plotted.
+#' @param at.x,at.y Numeric. The points at which tick-marks for the x- and the 
+#'   y-axis, respectively, are to be drawn (see \code{\link[graphics]{axis}}).
+#' @param labels.x,labels.y This can either be a logical value specifying
+#'   whether (numerical) annotations are to be made at the tickmarks of the x-
+#'   and y-axsi, respetively, or a character or expression vector of labels to
+#'   be placed at the tickpoints. If this is not logical, \code{at.x} and/or 
+#'   \code{at.y} should also be supplied and of the same length (see 
+#'   \code{\link[graphics]{axis}}).
+#' @param cex.x.axis,cex.y.axis The magnification to be used for axis annotation
+#'   relative to the current setting of cex (see \code{\link[graphics]{par}}).
+#' @param grid Logical. Should a grid be plotted.
+#' @param grid.h Numeric. Values of the y-axis at which the horizontal grid 
+#'   lines should be plotted.
+#' @param padj.x,padj.y Numeric. Adjustment for each tick label perpendicular to
+#'   the reading direction. For labels parallel to the axes, padj = 0 means 
+#'   right or top alignment, and padj = 1 means left or bottom alignment (see 
+#'   \code{\link[graphics]{axis}}).
+#' @param xlim,ylim Numeric vectors of length 2, giving the x and y coordinates ranges.
+#' @inheritParams graphics::par
+#' @inheritParams graphics::legend
+#' @inheritParams graphics::title
+# @inheritParams graphics::plot.window
+#' @seealso \code{\link[graphics]{par}}, \code{\link[graphics]{plot}}, and
+#'   \code{\link{legend}}
 plot_x <- function(data, model, y, x, xq = NULL,
-                   lvl = NULL, N = 1000,
+                   lvl = NULL, N = NULL,
                    ylab = y, xlab = x[1], lwd = 2, lty = 1,
-                   col = "black", pch = 20, alpha = .2, col.s = NULL,
+                   col = "black", pch = 20, alpha = .05, col.s = NULL,
                    xlim = range(data[, x[1]]), ylim = range(data[, y]),
                    seg.len = .5, cex.legend = .8, plot.legend = TRUE,
                    at.x = NULL, at.y = NULL, labels.x = TRUE, labels.y = TRUE,
-                   grid = TRUE, grid.h = NULL) {
+                   cex.x.axis = 1, cex.y.axis = 1, grid = TRUE, grid.h = NULL,
+                   padj.x = NA, padj.y = NA) {
     xlim; ylim
     opar <- par(no.readonly = T)
+    if (is.null(N)) N <- min(c(nrow(data), 2000))
     xes <- length(x)
     if (is.null(lvl) & xes > 1) {
         lvl <- as.list(as.data.frame(apply(data[, x[-1], drop = F], 2, function(x) {
@@ -239,24 +128,6 @@ plot_x <- function(data, model, y, x, xq = NULL,
     b <- rep(NA, length = 1 + length(a1))
     names(b) <- c("b0", paste0("b", a1))
     
-#     b.x <- names(b)
-#     b.x <- gsub("b", "", b.x)
-#     for (ii in 1:length(x)) {
-#         b.x <- gsub(ii, rainbow(length(x))[ii], b.x)
-#     }
-#     for (ii in 1:length(x)) {
-#         b.x <- gsub(rainbow(length(x))[ii], paste0(x[ii], ":"), b.x)
-#     }
-#     reverse_chars <- function(string) {
-#         string_split = strsplit(string, split = "")
-#         rev_order = nchar(string):1
-#         reversed_chars = string_split[[1]][rev_order]
-#         paste(reversed_chars, collapse="")
-#     }
-#     b.x <- sapply(b.x[-1], reverse_chars)
-#     b.x <- sub(":", "", b.x)
-#     b.x <- c("(Intercept)", sapply(b.x, reverse_chars))
-    
     b[1:length(b)] <- model$coefficients[x3][1:length(b)]
     if (any(is.na(b))) stop("Something went wrong while collecting the regression weights. Possibly, a desired interaction was not included in the 'model' you provided.")
     
@@ -264,15 +135,16 @@ plot_x <- function(data, model, y, x, xq = NULL,
         data <- data[sample(nrow(data), N), ]
         plot.new()
             plot.window(xlim = xlim, ylim = ylim)
-            axis(1, at = at.x, labels = labels.x)
-            axis(2, at = at.y, labels = labels.y)
+            axis(1, at = at.x, labels = labels.x, cex.axis = cex.x.axis,
+                 padj = padj.x)
+            axis(2, at = at.y, labels = labels.y, cex.axis = cex.y.axis,
+                 padj = padj.y)
             title(ylab = ylab, xlab = xlab)
             box()
             if (grid == TRUE) {
                 if (is.null(grid.h)) grid.h <- axTicks(2)
                 abline(h = grid.h, lty = 3, col = "grey75")
             }
-        # points(jitter(data[, x[1]]), jitter(data[, y]), pch = pch)
         points(data[, x[1]], data[, y], pch = pch,
                col = rgb(t(col2rgb(col))/255, alpha = alpha))
         
@@ -281,24 +153,22 @@ plot_x <- function(data, model, y, x, xq = NULL,
               + ifelse(is.null(xq), 0, xq)*x^2
               , add = T, col = col.s[ii], lwd = lwd, lty = lty,
               from = xlim[1]*1.2, to = xlim[2]*1.2)
-#         legend(x = "topleft", lty = lty, bty = "n", title = x[2],
-#                legend = round(lvl[[1]], 2),
-#                col = col.s, seg.len = seg.len, lwd = lwd, cex = cex.legend)
     }
         
     if (length(x) == 2) {
         data <- data[sample(nrow(data), N), ]
         plot.new()
             plot.window(xlim = xlim, ylim = ylim)
-            axis(1, at = at.x, labels = labels.x)
-            axis(2, at = at.y, labels = labels.y)
+            axis(1, at = at.x, labels = labels.x, cex.axis = cex.x.axis,
+                 padj = padj.x)
+            axis(2, at = at.y, labels = labels.y, cex.axis = cex.y.axis,
+                 padj = padj.y)
             title(ylab = ylab, xlab = xlab)
             box()
             if (grid == TRUE) {
                 if (is.null(grid.h)) grid.h <- axTicks(2)
                 abline(h = grid.h, lty = 3, col = "grey75")
             }
-        # points(jitter(data[, x[1]]), jitter(data[, y]), pch = pch)
         points(data[, x[1]], data[, y], pch = pch,
                col = rgb(t(col2rgb(col))/255, alpha = alpha))
         
@@ -324,8 +194,10 @@ plot_x <- function(data, model, y, x, xq = NULL,
             id.idx <- (data[, x[3]] >= id.cut[kk]) & (data[, x[3]] < id.cut[kk+1])
             plot.new()
             plot.window(xlim = xlim, ylim = ylim)
-            axis(1, at = at.x, labels = labels.x)
-            axis(2, at = at.y, labels = labels.y)
+            axis(1, at = at.x, labels = labels.x, cex.axis = cex.x.axis,
+                 padj = padj.x)
+            axis(2, at = at.y, labels = labels.y, cex.axis = cex.y.axis,
+                 padj = padj.y)
             title(ylab = ylab, xlab = xlab,
                   main = paste0(x[3], " = ", round(lvl[[2]][kk], 2)))
             box()
@@ -335,10 +207,6 @@ plot_x <- function(data, model, y, x, xq = NULL,
             }
             points(data[id.idx, x[1]], data[id.idx, y], pch = pch,
                    col = rgb(t(col2rgb(col))/255, alpha = alpha))
-#             plot(jitter(data[id.idx, x[1]]), jitter(data[id.idx, y]),
-#                  ylim = ylim,
-#                  pch = pch, ylab = ylab, xlab = xlab,
-#                  main = paste0(x[3], " = ", round(mean(c(lvl[[2]][kk], lvl[[2]][kk+1])), 2)))
             for (ii in 1:length(lvl[[1]])) {
                 curve(b["b0"]
                       + b["b1"]*x
@@ -364,18 +232,32 @@ plot_x <- function(data, model, y, x, xq = NULL,
 }
 
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-#  COVARIATE-FREE AND COVARIATE-BASED CRONBACH'S ALPHA ----------------------
+#  COVARIATE-FREE AND COVARIATE-DEPENDENT CRONBACH'S ALPHA ------------------
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-#' Calculate covariate-free and covariate-dependent Cronbach's Alpha
+#' Calculate covariate-free and covariate-dependent Cronbach's alpha
 #'
-#' detailed description
+#' If a covariate (or possibly a set of covariates) is partialled out from a set
+#' of target variables, their corresponding coefficient alpha can be decomposed 
+#' into a part that is dependent on that covariate and a part that is 
+#' independent ("free") from that covariate (and the sum equals ordinary
+#' coefficient alpha).
+#' 
+#' @references Bentler, P. (2015). \emph{Covariate-free and covariate-dependent
+#'   reliability}. Manuscript submitted for publication. Retrieved from
+#'   \url{http://escholarship.org/uc/item/6v61v1pk}
 #'
-#' @param data A data frame or matrix containing both the variables as well as the covariate(s).
-#' @param xx A vector of indices giving the variables' columns in \code{data}
-#' @param zz A vector of indices giving the covariates' columns in \code{data}. May have length of one.
-#' @return Returns a named vector with covariate-free, covariate-dependent, and total Cronbach's Alpha.
+#' @param data A data frame or matrix containing both the variables as well as
+#'   the covariate(s). This can also be a covariance matrix.
+#' @param xx Numeric. A vector of indices to specify the columns in \code{data}
+#'   that pertain to the target variables.
+#' @param zz Numeric. A vector of indices to specify the columns in \code{data}
+#'   that pertain to the covariate(s).
+#' @inheritParams stats::cov
+#' @return Returns a named vector with covariate-free, covariate-dependent, and
+#'   total Cronbach's alpha (unstandardized).
+#' @seealso Cronbach's alpha in the \strong{psych} package: \code{\link[psych]{alpha}}
 #' @export
-alpha_cov <- function(data, xx, zz = NA, use = "pairwise") {
+alpha_cov <- function(data, xx, zz = NULL, use = "pairwise") {
     a1 <- rep(NA, 3)
     p <- ncol(data[, xx])
     if (nrow(data) == ncol(data)) {
@@ -384,7 +266,7 @@ alpha_cov <- function(data, xx, zz = NA, use = "pairwise") {
         EE <- cov(data, use = use)
     }
     den <- sum(EE[xx, xx])
-    if (!any(is.na(zz))) {
+    if (!is.null(zz)) {
         EEf <- (EE[xx, xx, drop = F] - EE[xx, zz, drop = F] %*% solve(EE[zz, zz, drop = F]) %*% EE[zz, xx, drop = F])
         EEd <- EE[xx, zz, drop = F] %*% solve(EE[zz, zz, drop = F]) %*% EE[zz, xx, drop = F]
         # EE[xx, xx] == EEf + EEd
@@ -406,12 +288,11 @@ alpha_cov <- function(data, xx, zz = NA, use = "pairwise") {
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 #  BARPLOT WITH AUTOMATIC MAIN TITLE ----------------------------------------
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-#' Make a barplot and include the call to \code{\link{barplot}} as the main title
+#' Make a barplot and include the call to \link{barplot} in the main title
 #'
-#' detailed description
+#' Internal helper function
 #'
 #' @param ... Parameters passed to \code{\link{barplot}}
-#' @export
 barplot_main <- function(...) {
     barplot(main = paste(match.call()[2]), ...)
 }

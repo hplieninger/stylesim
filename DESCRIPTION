@@ -1,16 +1,19 @@
 Package: stylesim
 Title: Simulate (and Analyse) Data Distorted by Response Styles
 Description: This package allows to simulate data from a multidimensional Rasch
-    model and subsequently analyse these data
-Version: 0.1
+    model and subsequently analyse these data.
+Version: 0.1.0
 Authors@R: person("Hansjoerg", "Plieninger", role=c("aut", "cre"),
     email="plieninger@uni-mannheim.de")
-Depends:
-    R (>= 3.0.2),
+Depends: 
+    R (>= 3.0.2)
+Imports:
+    gtools,
     magic,
     MASS,
-    gtools,
-    ltm,
+    MBESS,
+    ROCR,
     truncnorm
 License: GPL (>= 2)
 LazyData: true
+RoxygenNote: 5.0.1
