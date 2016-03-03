@@ -6,8 +6,7 @@
 \usage{
 sim_style_data(n = 200, items = 10, categ = 5, ndimc = 1,
   style = NULL, irtmodel = "RSM", reversed = 1/3, var.s, mu.s = 0,
-  cor.cc, my.seed, pop.thres = FALSE, my.theta, my.thres, emp = TRUE,
-  sig = NULL)
+  cor.cc, pop.thres = FALSE, my.theta, my.thres, emp = TRUE, sig = NULL)
 }
 \arguments{
 \item{n}{Numeric. Desired number of observations/persons.}
@@ -43,9 +42,6 @@ items.}
 \item{cor.cc}{An optional vector indicating the correlation between the
 content-related variables (if \code{ndimc} > 1). If \code{ndimc} > 2,
 \code{cor.cc} is recycled if it is not of length \code{ndimc*(ndimc-1)/2}.}
-
-\item{my.seed}{Optional argument to specify a seed for the probabilistic
-draws of the responses given theta and the thresholds.}
 
 \item{pop.thres}{Logical. If \code{TRUE}, the thresholds of the RSM are set
 to their expected value.}

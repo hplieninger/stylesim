@@ -40,8 +40,6 @@
 #' @param cor.cc An optional vector indicating the correlation between the
 #'   content-related variables (if \code{ndimc} > 1). If \code{ndimc} > 2,
 #'   \code{cor.cc} is recycled if it is not of length \code{ndimc*(ndimc-1)/2}.
-#' @param my.seed Optional argument to specify a seed for the probabilistic
-#'   draws of the responses given theta and the thresholds.
 #' @param pop.thres Logical. If \code{TRUE}, the thresholds of the RSM are set
 #'   to their expected value.
 #' @param my.theta Optional argument to employ a pre-specified vector of person parameters theta
@@ -88,7 +86,7 @@
 # @importFrom truncnorm rtruncnorm
 sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
                            style = NULL, irtmodel = "RSM", reversed = 1/3,
-                           var.s, mu.s = 0, cor.cc, my.seed, pop.thres = FALSE,
+                           var.s, mu.s = 0, cor.cc, pop.thres = FALSE,
                            my.theta, my.thres, emp = TRUE, sig = NULL) {
 
     if (is.null(style) & !missing(var.s)) {
@@ -300,22 +298,9 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
     den <- array(rep(colSums(num), each = categ), dim = c(categ, items.tot, n))
     p <- num / den
     
-    # the loop is about 6.5 ms slower (using default arguments), but makes it
-    # possible to specify seeds
-    if (!missing(my.seed)) {
-        dat <- matrix(nrow = n, ncol = items.tot)
-        for (i in 1:items.tot) {
-            for (j in 1:n) {
-                set.seed(my.seed + .5*(i+j)*(i+j+1)+j)
-                dat[j, i] <- as.integer(findInterval(runif(1),
-                                                     cumsum(p[, i, j])))
-            }
-        }
-    } else {
-        dat <- t(apply(p, c(2, 3), function(i) {
-            as.integer(findInterval(runif(1), cumsum(i)))
-        }))
-    }
+    dat <- t(apply(p, c(2, 3), function(i) {
+        as.integer(findInterval(runif(1), cumsum(i)))
+    }))
     
     dat <- array(dat, dim = c(n, items.tot / ndimc, ndimc))
     
