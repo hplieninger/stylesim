@@ -3,15 +3,15 @@
 #' This function allows to simulate data from a multidimensional Rasch model, in
 #' which one (or more) latent variables represent response styles such as
 #' extreme response style or acquiescence.
-#' 
+#'
 #' @references
 #' Adams, R. J., Wilson, M., & Wang, W.-C. (1997). The multidimensional random coefficients multinomial logit model. \emph{Applied Psychological Measurement, 21}, 1-23. \href{http://dx.doi.org/10.1177/0146621697211001}{doi:10.1177/0146621697211001}
-#' 
+#'
 #' Plieninger, H. (in press). Mountain or molehill: A simulation study on the impact of reponse styles. \emph{Educational and Psychological Measurement}.
-#' 
+#'
 #' Wetzel, E. & Carstensen, C. H. (2015). Multidimensional modeling of traits and response styles. \emph{European Journal of Psychological Assessment}. Advance online publication. \href{http://dx.doi.org/10.1027/1015-5759/a000291}{doi:10.1027/1015-5759/a000291}
-#' 
-#' 
+#'
+#'
 #'
 #' @param n Numeric. Desired number of observations/persons.
 #' @param items Numeric. Desired number of items/stimuli. If \code{ndimc} > 1, this
@@ -74,11 +74,11 @@
 #'
 #'   \item{response.style}{
 #'     \code{style} -- The specified response style(s)
-#'     
+#'
 #'     \code{coding} -- The implied coding scheme
-#'     
+#'
 #'     \code{mu} -- \code{mu.s}
-#'     
+#'
 #'     \code{sig} -- The employed variance-covariance matrix}
 #' @export
 # @importFrom magic adiag
@@ -92,7 +92,7 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
     if (is.null(style) & !missing(var.s)) {
         stop("Not possible to specify the variance of the style dimension 'var.s', if argument 'style' is not specified")
     }
-    
+
     # ARGUMENT WRANGLING -------------------------------------------------------
     items.tot <- items * ndimc
     revs <- ifelse(reversed >= 1, reversed, trunc(items * reversed))
@@ -102,14 +102,14 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
     ndims <- ifelse(is.character(style), length(style), length(style)/categ)
     ndim <- ndimc + ndims
     if (revs >= items) stop("Function needs at least one regular item.")
-    
+
     # THETA --------------------------------------------------------------------
     # [DIM x N] MATRIX
     if (!missing(my.theta)) {
         if (is.vector(my.theta)) {
-            theta <- matrix(my.theta, ncol = 1)
+            theta <- matrix(my.theta, nrow = 1)
         } else {
-            theta <- t(my.theta)
+            if (nrow(my.theta) > ncol(my.theta)) theta <- t(my.theta)
         }
     } else {
         if (is.null(sig)) {
@@ -118,7 +118,7 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
             if (!missing(var.s)) {
                 diag(sig)[(ndimc + 1):ndim] <- var.s
             }
-            
+
             # the next 11 lines adapt the Var-Cov-Matrix if c and c are correlated
             if (!missing(cor.cc)) {
                 if(length(cor.cc) == 1) {
@@ -134,8 +134,8 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
             if (!isSymmetric(sig)) stop("The matrix 'sig' is not symmetric")
             if (ndim != ncol(sig)) stop("Matrix 'sig' is of wrong dimension")
         }
-        
-        
+
+
         if (missing(mu.s)) mu.s <- 0
         if (length(mu.s) != ndims) {
             mu.s <- rep(mu.s, ndims)
@@ -149,7 +149,7 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
                                  ifelse(rep(is.character(style), ndims), style, paste("style", 1:ndims, sep = "")))
         }
     }
-    
+
     # THRESHOLDS ---------------------------------------------------------------
     # [ITEMS*(CATEG-1) x N] MATRIX
     # For identification of the rating scale model, see comment below.
@@ -164,13 +164,13 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
         if (!is.unsorted(loc, strictly = T) & revs > 0) {
             stop("You are not allowed to reverse-code items if item locations are sorted. Please shuffle order of item locations.")
         }
-        
+
     } else {
         if (irtmodel == "RSM") {
-            
+
             t.min <- -2.5
             t.max <- 2.5
-            
+
             if (pop.thres == TRUE) {
                 x1 <- seq(t.min, t.max, length = (categ + 1))
                 thres.rsm <- x1[2:(length(x1) - 1)]; rm(x1)
@@ -181,9 +181,9 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
                     if (max(abs(thres.rsm)) <= 2.5) break
                 }
             }
-            
+
             loc <- truncnorm::rtruncnorm(items.tot, a = -1.5, b = 1.5, mean = 0, sd = sqrt(1))
-            
+
             #       loc <- numeric()
             #       for (i in 1:ndimc) {
             #         x2 <- seq(-1.5, 1.5, length = (reg + 2))
@@ -194,21 +194,21 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
             #         }
             #       }
             #       loc <- rep(loc, each = categ - 1)
-            
+
         } else {
             stop("Only the rating scale model is currently implemented. Please modify argument 'irtmodel'.")
         }
     }
-    
+
     thres <- c(loc, thres.rsm)
-    
+
     thres <- matrix(thres, nrow = length(thres), ncol = n)
-    
+
     # B-MATRIX -----------------------------------------------------------------
     # [ITEMS*CATEG x DIM] MATRIX
     B <- matrix(rep(0:(categ - 1), items), ncol = 1)
     B <- do.call(magic::adiag, rep(list(B), ndimc))
-    
+
     if (is.numeric(style)) {
         if (length(style) != categ) stop("Incorrect number of weights specified")
         B <- cbind(B,
@@ -277,7 +277,7 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
 
     # A-MATRIX -----------------------------------------------------------------
     # [ITEMS*CATEG x ITEMS*(CATEG-1)] MATRIX
-    
+
     # Note that no identification constraint is placed on the A-matrix!! This is
     # especially important with respect to the thresholds in the rating scale
     # model (RSM). All RSM-thresholds are sampled (above) from the same
@@ -291,26 +291,26 @@ sim_style_data <- function(n = 200, items = 10, categ = 5, ndimc = 1,
     A <- do.call(rbind, rep(list(A), items.tot))
     A2 <- do.call(magic::adiag, rep(list(t(t(0:(categ - 1)))), items.tot))
     A <- cbind(A2, A)
-    
+
     # IRT MODEL -> DATA --------------------------------------------------------
     num <- exp(B %*% theta - A %*% thres)
     num <- array(num, dim = c(categ, items.tot, n))
     den <- array(rep(colSums(num), each = categ), dim = c(categ, items.tot, n))
     p <- num / den
-    
+
     dat <- t(apply(p, c(2, 3), function(i) {
         as.integer(findInterval(runif(1), cumsum(i)))
     }))
-    
+
     dat <- array(dat, dim = c(n, items.tot / ndimc, ndimc))
-    
+
     # RETURN RESULTS -----------------------------------------------------------
     if(irtmodel == "RSM") {
         item.par = c(loc, thres.rsm)
         names(item.par) <- c(paste("item", 1:items.tot, sep = ""),
                              paste("categ", 1:(categ - 1), sep = ""))
     }
-    
+
     res <- list(dat = dat, theta = t(theta), item.parameters = item.par, n = n,
                 items.per.dimension = items, reverse.coded.items = revs,
                 categories = categ, irtmodel = irtmodel, dims.content = ndimc)

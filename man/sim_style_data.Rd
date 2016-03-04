@@ -85,11 +85,11 @@ Returns a list containing the data and basically a summary of the input specific
 
   \item{response.style}{
     \code{style} -- The specified response style(s)
-    
+
     \code{coding} -- The implied coding scheme
-    
+
     \code{mu} -- \code{mu.s}
-    
+
     \code{sig} -- The employed variance-covariance matrix}
 }
 \description{
